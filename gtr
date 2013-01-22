@@ -160,6 +160,7 @@ Usage:
     $PROG glog [less]
     $PROG check
 
+    $PROG add [paths]
     $PROG stage
     $PROG git ...
     $PROG ...
@@ -309,8 +310,17 @@ function squash() {
 }
 
 
+function add() {
+    if [ x"$1" == x""  ]; then
+        gogitDT add . && gogitDT status
+    else
+        gogitDT add "$@" && gogitDT status
+    fi
+}
+
+
 function stage() {
-   gogitDT add -u
+   gogitDT add -u && gogitDT status
 }
 
 
@@ -423,6 +433,10 @@ function dispatch() {
     new-branch)
         shift
         newBranch "$@"
+        ;;
+    add)
+        shift
+        add "$@"
         ;;
     stage)
         shift
