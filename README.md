@@ -15,7 +15,7 @@ gtr serves two primary functions:
 
   1. Making it easy to work with repositories that have been separated from the working tree.  For example, if your project is called fuzzy-noodle, you can place your project repository in fuzzy-noodle.git, rather than in the hidden directory fuzzy-noodle/.git.  The working tree would still reside in fuzzy-noodle/.  gtr supports both this arrangement and the default arrangement.  It does so by detecting the location of the working tree and the respository, and then passing the appropriate --git-dir and --work-tree options to git commands, so that you don't have too.  Nice.
 
-  2. Providing a variety of convenience operations for common workflows.  These are listed in the usage section.  You might want to try `ggtr glog` for lovely text-based commit graphs, or use `gtr squash` to quickly collapse several check-point commits.  Try `gtr pull upstream under` as a more explicit notation for integrating upstream changes.
+  2. Providing a variety of convenience operations for common workflows.  These are listed in the usage section.  You might want to try `gtr glog` for lovely text-based commit graphs, or use `gtr squash` to quickly collapse several check-point commits.  Try `gtr pull upstream under` as a more explicit notation for integrating upstream changes.
 
 In addition, gtr does not hide git.  In it's verbose mode, it displays every raw git operation it executes.  It serves to help you use git effectively, and the essence of the supported commands retain their git flavour.
 
