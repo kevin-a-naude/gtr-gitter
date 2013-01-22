@@ -1,0 +1,460 @@
+#!/bin/bash
+
+PWD=$(pwd)
+
+QUIET=""
+function params() {
+    if [ x"$QUIET" == x"" ]; then
+        PARAMS=""
+        if [ x"$1" != x"" ]; then
+            PARAM="$1"
+            PARAM_E="${PARAM/ /}"
+            if [ x"$1" == x"$PARAM_E" ]; then
+                PARAMS=$1
+            else
+                PARAMS="\"$1\""
+            fi
+            shift
+            while [ x"$1" != x"" ]; do
+                if [[ "$1" != --git-dir=* ]] && [[  "$1" != --work-tree=* ]]; then
+                    PARAM="$1"
+                    PARAM_E="${PARAM/ /}"
+                    PARAM_E="${PARAM_E//\"/}"
+                    if [ x"$1" == x"$PARAM_E" ]; then
+                        PARAM_E=$1
+                    else
+                        PARAM_E="\"${PARAM//\"/\\\"}\""
+                    fi
+                    PARAMS="$PARAMS $PARAM_E"
+                fi
+                shift
+            done
+        fi
+        START=`printf "\033[1m"`
+        END=`printf "\033[0m"`
+        echo $START[ $PARAMS ]$END
+        #echo $PARAMS
+    fi
+}
+
+function go() {
+    params "$@"
+    "$@"
+}
+
+
+GDIR=""
+GTREE=""
+function getGIT() {
+    DIR="$PWD"
+    NEWDIR="$DIR"
+    ALTEXT=${DIR: -4:4}
+    ALTDIR="$(dirname $DIR)/$(basename $DIR .git)"
+    ALTEX=""
+    # if [[ -d "$ALTDIR" && "$ALTEXT" == ".git" ]]; then
+    if [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
+        ALTEX="TRUE"
+    fi
+    while [[ ! -d "$DIR/.git" && ! -d "$DIR.git" && x"$ALTEX" != x"TRUE" ]]
+    do
+        NEWDIR=$(dirname "$DIR")
+        if [[ x"$NEWDIR" == x"$DIR" || "$NEWDIR" == "/" ]]; then
+            break
+        fi
+        DIR="$NEWDIR"
+        ALTEXT=${DIR: -4:4}
+        ALTDIR="$(dirname $DIR)/$(basename $DIR .git)"
+        ALTEX=""
+        # if [[ -d "$ALTDIR" && "$ALTEXT" == ".git" ]]; then
+        if [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
+            ALTEX="TRUE"
+        fi
+    done
+    if [ -d "$DIR/.git" ]; then
+        GDIR="--git-dir=$DIR/.git"
+        GTREE="--work-tree=$DIR"
+    elif [ -d "$DIR.git" ]; then
+        GDIR="--git-dir=$DIR.git"
+        if [ -d "$DIR" ]; then
+            GTREE="--work-tree=$DIR"
+        fi
+    elif [ x"$ALTEX" == x"TRUE" ]; then
+        GDIR="--git-dir=$ALTDIR.git"
+        GTREE="--work-tree=$ALTDIR"
+    else
+        GDIR=""
+        GTREE=""
+    fi
+}
+getGIT
+
+
+function qgogit() {
+    TREEDIR=""
+    if [[ $GTREE == --work-tree=* ]]; then
+        TREEDIR=${GTREE/--work-tree=/}
+    fi
+    if [[ $PWD == $TREEDIR*  ]]; then
+        git "$@"
+    else
+        pushd $TREEDIR >/dev/null
+        git "$@"
+        popd >/dev/null
+    fi
+}
+
+function gogit() {
+    params git "$@"
+    qgogit "$@"
+}
+
+function gogitDT() {
+    gogit $GDIR $GTREE "$@"
+}
+
+function gogitD() {
+    gogit $GDIR "$@"
+}
+
+function gogitT() {
+    gogit $GTREE "$@"
+}
+
+function qgogitDT() {
+    qgogit $GDIR $GTREE "$@"
+}
+
+function qgogitD() {
+    qgogit $GDIR "$@"
+}
+
+function qgogitT() {
+    qgogit $GTREE "$@"
+}
+
+
+function usage() {
+    DISCOVERED="none"
+    if [[ x"$GDIR" != x"" ]] || [[ x"$GTREE" != x"" ]]; then
+        DISCOVERED="$GDIR $GTREE"
+    fi
+    PROG=$(basename $0)
+    cat <<END
+gitter -- a git convenience wrapper written by Kevin A. Naudé
+git paths discovered: $DISCOVERED
+Usage:
+    $PROG setup user-name user-email
+    $PROG init [bare] project-name
+    $PROG clone [bare] project-url [alt-project-name]
+
+    $PROG new[-branch] branch-name
+    $PROG get branch-name
+
+    $PROG commit [message|!]
+    $PROG pull [source] (under|over)
+    $PROG merge [source] [squash]
+    $PROG squash wrt-check-point [message|!]
+
+    $PROG hash
+    $PROG where
+    $PROG glog [less]
+    $PROG check
+
+    $PROG stage
+    $PROG git ...
+    $PROG ...
+END
+    exit
+}
+
+
+function init() {
+    HERE=$PWD
+    BARE=""
+    if [ x"$1" == x"bare" ]; then
+        shift
+        BARE="--bare"
+    fi
+    go mkdir -p $1.git
+    pushd $1.git >/dev/null
+    go git init --bare
+    popd >/dev/null
+    if [ x"$BARE" == x"" ]; then
+        go mkdir -p $1
+        pushd $1 >/dev/null
+        # go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 checkout -f
+        go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 commit --allow-empty -m "Created."
+        popd >/dev/null
+    fi
+}
+
+
+function clone() {
+    HERE=$PWD
+    BARE=""
+    if [ x"$1" == x"bare" ]; then
+        shift
+        BARE="--bare"
+    fi
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    NAME=$(basename $1 .git)
+    if [ x"$2" != x"" ]; then
+        NAME=$2
+    fi
+    go git clone --bare $1 $NAME.git
+    if [ x"$BARE" == x"" ]; then
+        go mkdir -p $NAME
+        pushd $NAME >/dev/null
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME checkout -f
+        popd >/dev/null
+    fi
+}
+
+
+function setup() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    if [ x"$2" == x"" ]; then
+        usage
+    fi
+    if [ x"$3" != x"" ]; then
+        usage
+    fi
+    gogit config --global user.name "$1"
+    gogit config --global user.email "$2"
+    gogit config --global color.ui "true"
+}
+
+
+function glog() {
+    if [ x"$1" != x"less" ]; then
+        gogitDT log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit
+    else
+        gogitDT log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(bold white)— %an%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative
+    fi
+}
+
+
+function where() {
+    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    echo "$BRANCH"
+}
+
+
+function hash() {
+    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    gogitDT merge-base $BRANCH $BRANCH
+}
+
+
+function get() {
+    gogitDT checkout "$@"
+}
+
+
+function commit() {
+    if [ x"$1" == x"!" ]; then
+        gogitDT commit --allow-empty-message -m ""
+    elif [ x"$1" == x"" ]; then
+        gogitDT commit -e
+    else
+        gogitDT commit -m "$1"
+    fi
+}
+
+
+function pull() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    if [ x"$2" == x"over" ]; then
+        gogitDT tag -f gtr-check-point
+        gogitDT fetch $1 && gogitDT merge $1
+    elif [ x"$2" == x"under" ]; then
+        gogitDT tag -f gtr-check-point
+        gogitDT fetch $1 && gogitDT rebase $1
+    else
+        usage
+    fi
+}
+
+
+function merge() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    if [ x"$2" == x"squash" ]; then
+        gogitDT tag -f gtr-check-point
+        gogitDT merge --squash $1
+    else
+        gogitDT tag -f gtr-check-point
+        gogitDT merge $1
+    fi
+}
+
+
+function squash() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    gogitDT tag -f gtr-check-point
+    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    HASH=$(qgogitDT merge-base $BRANCH $BRANCH)
+    OTHER=$(qgogitDT merge-base $1 $BRANCH)
+    shift
+    gogitDT reset --hard $OTHER && gogitDT merge --squash $HASH && commit && check
+}
+
+
+function stage() {
+   gogitDT add -u
+}
+
+
+GIT_CHECK_OK=""
+function check () {
+    qgogitDT update-index -q --ignore-submodules --refresh
+    GIT_CHECK_OK=""
+    RESULT="yes"
+
+    if ! qgogitDT diff-files --quiet --ignore-submodules --
+    then
+        gogitDT status >&2
+        RESULT=""
+    elif ! qgogitDT diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        gogitDT status >&2
+        RESULT=""
+    else
+        echo "The work tree appears to be in a committed state."
+    fi
+    GIT_CHECK_OK=$RESULT
+}
+
+
+function newBranch() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+    qgogitDT update-index -q --ignore-submodules --refresh
+    GIT_CHECK_OK=""
+    RESULT="yes"
+
+    if ! qgogitDT diff-files --quiet --ignore-submodules --
+    then
+        RESULT=""
+    elif ! qgogitDT diff-index --cached --quiet HEAD --ignore-submodules --
+    then
+        RESULT=""
+    fi
+    GIT_CHECK_OK=$RESULT
+    if [ x"$GIT_CHECK_OK" != x"" ]; then
+        gogitDT checkout -b $1
+    else
+        gogitDT stash save && gogitDT stash branch $1
+    fi
+}
+
+
+function dispatch() {
+    if [ x"$1" == x"" ]; then
+        usage
+    fi
+
+    # set default
+    QUIET="true"
+
+    while [[ x"$1" == x"-q" ]] || [[ x"$1" == x"-v" ]]; do
+        if [ x"$1" == x"-q" ]; then
+            QUIET="true"
+            shift
+        fi
+
+        if [ x"$1" == x"-v" ]; then
+            QUIET=""
+            shift
+        fi
+    done
+
+    case "$1" in
+    setup)
+        shift
+        setup "$@"
+        ;;
+    init)
+        shift
+        init "$@"
+        ;;
+    clone)
+        shift
+        clone "$@"
+        ;;
+    check)
+        shift
+        check "$@"
+        ;;
+    get)
+        shift
+        get "$@"
+        ;;
+    pull)
+        shift
+        pull "$@"
+        ;;
+    merge)
+        shift
+        merge "$@"
+        ;;
+    squash)
+        shift
+        squash "$@"
+        ;;
+    commit)
+        shift
+        commit "$@"
+        ;;
+    new)
+        shift
+        newBranch "$@"
+        ;;
+    new-branch)
+        shift
+        newBranch "$@"
+        ;;
+    stage)
+        shift
+        stage "$@"
+        ;;
+    hash)
+        shift
+        hash "$@"
+        ;;
+    where)
+        shift
+        where "$@"
+        ;;
+    glog)
+        shift
+        glog "$@"
+        ;;
+    help)
+        usage
+        ;;
+    git)
+        shift
+        gogitDT "$@"
+        ;;
+    *)
+        gogitDT "$@"
+        ;;
+    esac
+}
+
+# usage
+# gogitDT "$@"
+# check
+
+dispatch "$@"
