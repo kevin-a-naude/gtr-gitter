@@ -133,6 +133,45 @@ function qgogitT() {
 }
 
 
+BRANCH=""
+function getBranch() {
+    BRANCH=$(qgogitDT branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+}
+
+REMOTE=""
+function getRemote() {
+    if [ x"$BRANCH" == x"" ]; then
+        getBranch
+    fi
+    if [ x"$BRANCH" != x"" ]; then
+        REMOTE=$(qgogitDT config branch.$BRANCH.remote)
+    fi
+}
+
+REMOTE_BRANCH=""
+function getRemoteBranch() {
+    if [ x"$BRANCH" == x"" ]; then
+        getBranch
+    fi
+    if [ x"$BRANCH" != x"" ]; then
+        REMOTE_BRANCH=$(qgogitDT config branch.$BRANCH.merge | sed -e 's/refs\/heads\/\(.*\)/\1/')
+    fi
+}
+
+REMOTE_SLASH_BRANCH=""
+function getRemoteSlashBranch() {
+    if [ x"$REMOTE" == x"" ]; then
+        getRemote
+    fi
+    if [ x"$REMOTE_BRANCH" == x"" ]; then
+        getRemoteBranch
+    fi
+    if [[ x"$REMOTE" != x"" ]] && [[ x"$REMOTE_BRANCH" != x"" ]]; then
+        REMOTE_SLASH_BRANCH=$REMOTE/$REMOTE_BRANCH
+    fi
+}
+
+
 function usage() {
     DISCOVERED="none"
     if [[ x"$GDIR" != x"" ]] || [[ x"$GTREE" != x"" ]]; then
@@ -245,13 +284,13 @@ function glog() {
 
 
 function where() {
-    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    getBranch
     echo "$BRANCH"
 }
 
 
 function hash() {
-    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    getBranch
     gogitDT merge-base $BRANCH $BRANCH
 }
 
