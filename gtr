@@ -312,15 +312,26 @@ function commit() {
 
 
 function pull() {
+    getRemoteSlashBranch
+    TARGET1=$REMOTE
+    TARGET2=$REMOTE_SLASH_BRANCH
     if [ x"$1" == x"" ]; then
         usage
     fi
-    if [ x"$2" == x"over" ]; then
+    if [[ x"$1" != x"over" ]] && [[ x"$1" != x"under" ]]; then
+        if [ x"$1" != x"$REMOTE" ]; then
+            TARGET1=$1
+            TRAGET2=$1/master
+            shift
+        fi
+    fi
+    if [[ x"$1" == x"over" ]] || [[ x"$1" == x"under" ]]; then
         gogitDT tag -f gtr-check-point
-        gogitDT fetch $1 && gogitDT merge $1
-    elif [ x"$2" == x"under" ]; then
-        gogitDT tag -f gtr-check-point
-        gogitDT fetch $1 && gogitDT rebase $1
+        if [ x"$1" == x"over" ]; then
+            gogitDT fetch $TARGET1 && gogitDT merge $TARGET2
+        elif [ x"$1" == x"under" ]; then
+            gogitDT fetch $TARGET1 && gogitDT rebase $TARGET2
+        fi
     else
         usage
     fi
