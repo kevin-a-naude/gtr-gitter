@@ -325,10 +325,16 @@ function pull() {
     fi
     if [[ x"$1" != x"over" ]] && [[ x"$1" != x"under" ]]; then
         if [ x"$1" != x"$REMOTE" ]; then
-            TARGET1=$1
-            TRAGET2=$1/master
-            shift
+            if [[ "$1" == */* ]]; then
+                TARGET=$1
+                TARGET2=${TARGET//[^\/]*\//}
+                TARGET=${TARGET//\/[^\/]*/}
+            else
+                TARGET1=$1
+                TRAGET2=$1/master
+            fi
         fi
+        shift
     fi
     if [[ x"$1" == x"over" ]] || [[ x"$1" == x"under" ]]; then
         gogitDT tag -f gtr-check-point
