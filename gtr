@@ -342,12 +342,11 @@ function merge() {
     if [ x"$1" == x"" ]; then
         usage
     fi
+    gogitDT tag -f gtr-check-point
     if [ x"$2" == x"squash" ]; then
-        gogitDT tag -f gtr-check-point
-        gogitDT merge --squash $1
+        gogitDT merge --squash --no-commit $1 && gogitDT status
     else
-        gogitDT tag -f gtr-check-point
-        gogitDT merge $1
+        gogitDT merge --no-commit $1 && gogitDT status
     fi
 }
 
