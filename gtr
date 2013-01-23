@@ -3,6 +3,7 @@
 PWD=$(pwd)
 
 QUIET=""
+# QUIET="true"
 function params() {
     if [ x"$QUIET" == x"" ]; then
         PARAMS=""
@@ -427,9 +428,6 @@ function dispatch() {
     if [ x"$1" == x"" ]; then
         usage
     fi
-
-    # set default
-    QUIET="true"
 
     while [[ x"$1" == x"-q" ]] || [[ x"$1" == x"-v" ]]; do
         if [ x"$1" == x"-q" ]; then
