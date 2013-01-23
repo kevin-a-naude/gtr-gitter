@@ -25,29 +25,27 @@ Usage
 
 Place the gtr script somewhere on your search PATH for greater convenience.
 
-gtr 
-
-Usage:
-    gtr setup user-name user-email
-    gtr init [bare] project-name
-    gtr clone [bare] project-url [alt-project-name]
-
-    gtr new[-branch] branch-name
-    gtr get branch-name
-
-    gtr commit [message|!]
-    gtr pull [source] (under|over)
-    gtr merge [source] [squash]
-    gtr squash wrt-check-point [message|!]
-
-    gtr hash
-    gtr where
-    gtr log [g[1|2]]
-    gtr check
-
-    gtr add [paths]
-    gtr stage
-    gtr git ...
-    gtr ...
+    Usage:
+        gtr setup user-name user-email
+        gtr init [bare] project-name
+        gtr clone [bare] project-url [alt-project-name]
+        
+        gtr new[-branch] branch-name
+        gtr get branch-name
+        
+        gtr commit [message|!]
+        gtr pull [source] (under|over)
+        gtr merge [source] [squash]
+        gtr squash wrt-check-point [message|!]
+        
+        gtr hash
+        gtr where
+        gtr log [g[1|2]]
+        gtr check
+        
+        gtr add [paths]
+        gtr stage
+        gtr git ...
+        gtr ...
 
 
