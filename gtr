@@ -184,6 +184,7 @@ function init() {
         go mkdir -p $1
         pushd $1 >/dev/null
         # go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 checkout -f
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config core.logallrefupdates "true"
         go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 commit --allow-empty -m "Created."
         popd >/dev/null
     fi
@@ -209,6 +210,10 @@ function clone() {
         go mkdir -p $NAME
         pushd $NAME >/dev/null
         go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME checkout -f
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config core.logallrefupdates "true"
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config branch.master.remote "origin"
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config branch.master.merge "refs/heads/master"
         popd >/dev/null
     fi
 }
