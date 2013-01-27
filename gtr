@@ -281,9 +281,9 @@ function setup() {
 function log() {
     if [ x"$1" == x"" ]; then
         gogitDT log
-    elif [ x"$1" == x"g1" ]; then
+    elif [[ x"$1" == x"g1" ]] || [[ x"$1" == x"g" ]]; then
         gogitDT log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(bold white)— %an%C(reset)%C(bold yellow)%d%C(reset)' --abbrev-commit --date=relative
-    elif [[ x"$1" == x"g2" ]] || [[ x"$1" == x"g" ]]; then
+    elif [[ x"$1" == x"g2" ]]; then
         gogitDT log --graph --all --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(bold white)— %an%C(reset)' --abbrev-commit
     else
         gogitDT log "$@"
