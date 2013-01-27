@@ -524,6 +524,9 @@ function dispatch() {
         shift
         log "$@"
         ;;
+    archive)
+        qgogitDT "$@"
+        ;;
     help)
         usage
         ;;
