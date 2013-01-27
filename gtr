@@ -215,16 +215,17 @@ function init() {
         shift
         BARE="--bare"
     fi
-    go mkdir -p $1.git
-    pushd $1.git >/dev/null
-    go git init --bare
+    NAME=$1
+    shift
+    go mkdir -p $NAME.git
+    pushd $NAME.git >/dev/null
+    go git init --bare "$@"
     popd >/dev/null
     if [ x"$BARE" == x"" ]; then
-        go mkdir -p $1
-        pushd $1 >/dev/null
-        # go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 checkout -f
+        go mkdir -p $NAME
+        pushd $NAME >/dev/null
         go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config core.logallrefupdates "true"
-        go git --git-dir=$HERE/$1.git --work-tree=$HERE/$1 commit --allow-empty -m "Created."
+        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME commit --allow-empty -m "Created."
         popd >/dev/null
     fi
 }
@@ -241,10 +242,13 @@ function clone() {
         usage
     fi
     NAME=$(basename $1 .git)
-    if [ x"$2" != x"" ]; then
-        NAME=$2
+    FULLNAME=$1
+    shift
+    if [ x"$1" != x"" ]; then
+        NAME=$1
+        shift
     fi
-    go git clone --bare $1 $NAME.git
+    go git clone --bare $FULLNAME $NAME.git "$@"
     if [ x"$BARE" == x"" ]; then
         go mkdir -p $NAME
         pushd $NAME >/dev/null
