@@ -38,8 +38,7 @@ Place the gtr script somewhere on your search PATH for greater convenience.
         gtr merge [source] [squash]
         gtr squash wrt-check-point [message|!]
         
-        gtr hash
-        gtr where
+        gtr which (hash|branch|tag)
         gtr log [g[1|2]]
         gtr check
         

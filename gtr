@@ -195,8 +195,7 @@ Usage:
     $PROG merge [source] [squash]
     $PROG squash wrt-check-point [message|!]
 
-    $PROG hash
-    $PROG where
+    $PROG which (hash|branch|tag)
     $PROG log [g[1|2]]
     $PROG check
 
@@ -288,15 +287,18 @@ function log() {
 }
 
 
-function where() {
-    getBranch
-    echo "$BRANCH"
-}
-
-
-function hash() {
-    getBranch
-    gogitDT merge-base $BRANCH $BRANCH
+function which() {
+    if [ x"$1" == x"hash" ]; then
+        getBranch
+        gogitDT merge-base $BRANCH $BRANCH
+    elif [ x"$1" == x"branch" ]; then
+        getBranch
+        echo "$BRANCH"
+    elif [ x"$1" == x"tag" ]; then
+        gogitDT describe --abbrev=0
+    else
+        usage
+    fi
 }
 
 
@@ -504,13 +506,9 @@ function dispatch() {
         shift
         stage "$@"
         ;;
-    hash)
+    which)
         shift
-        hash "$@"
-        ;;
-    where)
-        shift
-        where "$@"
+        which "$@"
         ;;
     log)
         shift
