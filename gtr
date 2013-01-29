@@ -49,14 +49,33 @@ GTREE=""
 function getGIT() {
     DIR="$PWD"
     NEWDIR="$DIR"
+    NAME=$(basename $DIR .git)
     ALTEXT=${DIR: -4:4}
-    ALTDIR="$(dirname $DIR)/$(basename $DIR .git)"
+    ALTDIR=$(dirname $DIR)/$NAME
     ALTEX=""
-    # if [[ -d "$ALTDIR" && "$ALTEXT" == ".git" ]]; then
-    if [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
+    WDIR=$(readlink -f $DIR/../../work/$NAME)
+    PDIR=$(readlink -f $DIR/../../projects/$NAME)
+    RDIR=$(readlink -f $DIR/../../repos/$NAME.git)
+    RDIR2=$(readlink -f $DIR/../../repos/$NAME)
+    SPLITDIR=""
+    SPLITDIR2=""
+    if [[ -d "$RDIR" ]]; then
+        SPLITDIR2="$RDIR"
+    elif [[ -d "$RDIR2" ]]; then
+        SPLITDIR2="$RDIR2"
+    fi
+    if [[ x"$SPLITDIR2" != x"" ]]; then
+        if [[ -d "$PDIR" ]]; then
+            SPLITDIR="$PDIR"
+        elif [[ -d "$WDIR" ]]; then
+            SPLITDIR="$WDIR"
+        else
+            SPLITDIR="TRUE"
+        fi
+    elif [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
         ALTEX="TRUE"
     fi
-    while [[ ! -d "$DIR/.git" && ! -d "$DIR.git" && x"$ALTEX" != x"TRUE" ]]
+    while [[ ! -d "$DIR/.git" && ! -d "$DIR.git" && x"$SPLITDIR" == x""  && x"$ALTEX" != x"TRUE" ]]
     do
         NEWDIR=$(dirname "$DIR")
         if [[ x"$NEWDIR" == x"$DIR" || "$NEWDIR" == "/" ]]; then
@@ -65,9 +84,24 @@ function getGIT() {
         DIR="$NEWDIR"
         ALTEXT=${DIR: -4:4}
         ALTDIR="$(dirname $DIR)/$(basename $DIR .git)"
-        ALTEX=""
-        # if [[ -d "$ALTDIR" && "$ALTEXT" == ".git" ]]; then
-        if [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
+        WDIR=$(readlink -f $DIR/../../work/$NAME)
+        PDIR=$(readlink -f $DIR/../../projects/$NAME)
+        RDIR=$(readlink -f $DIR/../../repos/$NAME.git)
+        RDIR2=$(readlink -f $DIR/../../repos/$NAME)
+        if [[ -d "$RDIR" ]]; then
+            SPLITDIR2="$RDIR"
+        elif [[ -d "$RDIR2" ]]; then
+            SPLITDIR2="$RDIR2"
+        fi
+        if [[ x"$SPLITDIR2" != x"" ]]; then
+            if [[ -d "$PDIR" ]]; then
+                SPLITDIR="$PDIR"
+            elif [[ -d "$WDIR" ]]; then
+                SPLITDIR="$WDIR"
+            else
+                SPLITDIR="TRUE"
+            fi
+        elif [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
             ALTEX="TRUE"
         fi
     done
@@ -78,6 +112,13 @@ function getGIT() {
         GDIR="--git-dir=$DIR.git"
         if [ -d "$DIR" ]; then
             GTREE="--work-tree=$DIR"
+        fi
+    elif [ x"$SPLITDIR" != x"" ]; then
+        GDIR="--git-dir=$SPLITDIR2"
+        if [ x"$SPLITDIR" == x"TRUE" ]; then
+            GTREE=""
+        else
+            GTREE="--work-tree=$SPLITDIR"
         fi
     elif [ x"$ALTEX" == x"TRUE" ]; then
         GDIR="--git-dir=$ALTDIR.git"
