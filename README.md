@@ -27,8 +27,8 @@ Place the gtr script somewhere on your search PATH for greater convenience.
 
     Usage:
         gtr setup user-name user-email
-        gtr init [bare] project-name
-        gtr clone [bare] project-url [alt-project-name]
+        gtr init [bare|split] project-name
+        gtr clone [bare|split] project-url [alt-project-name]
         
         gtr new[-branch] branch-name
         gtr get branch-name

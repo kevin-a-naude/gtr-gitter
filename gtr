@@ -225,8 +225,8 @@ gitter -- a git convenience wrapper written by Kevin A. Naudé
 git paths discovered: $DISCOVERED
 Usage:
     $PROG setup user-name user-email
-    $PROG init [bare] project-name
-    $PROG clone [bare] project-url [alt-project-name]
+    $PROG init [bare|split] project-name
+    $PROG clone [bare|split] project-url [alt-project-name]
 
     $PROG new[-branch] branch-name
     $PROG get branch-name
@@ -252,52 +252,165 @@ END
 function init() {
     HERE=$PWD
     BARE=""
+    NAME=""
+    WDIR=""
+    GDIR=""
+    NORM=""
     if [ x"$1" == x"bare" ]; then
         shift
         BARE="--bare"
+        NAME=$1
+        GDIR=$HERE/$NAME
+    elif [ x"$1" == x"split" ]; then
+        shift
+        NAME=$1
+        WDIR2=$(readlink -f "$HERE/../work")
+        WDIR3=$(readlink -f "$HERE/../projects")
+        GDIR2=$(readlink -f "$HERE/../repos")
+        DONE=""
+        if [[ -d "$GDIR2" ]] && [[ -d "$WDIR2" ]]; then
+            if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR2" == "$HERE"* ]]; then
+                WDIR="$WDIR2/$NAME"
+                GDIR="$GDIR2/$NAME"
+                DONE="TRUE"
+            fi
+        elif [[ -d "$GDIR2" ]] && [[ -d "$WDIR3" ]]; then
+            if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR3" == "$HERE"* ]]; then
+                WDIR="$WDIR3/$NAME"
+                GDIR="$GDIR2/$NAME"
+                DONE="TRUE"
+            fi
+        fi
+        if [ x"$DONE" == x"" ]; then
+            WDIR="$HERE/$NAME"
+            GDIR="$HERE/$NAME.git"
+        fi
+    else
+        NAME=$1
+        WDIR=$HERE/$NAME
+        GDIR=$HERE/$NAME/.git
+        NORM="TRUE"
     fi
-    NAME=$1
     shift
-    go mkdir -p $NAME.git
-    pushd $NAME.git >/dev/null
-    go git init --bare "$@"
-    popd >/dev/null
+    if [ x"$NORM" == x"" ]; then
+        if [ x"$BARE" == x"" ]; then
+            go mkdir -p "$WDIR"
+        fi
+        go mkdir -p "$GDIR"
+        pushd "$GDIR" >/dev/null
+        go git init --bare "$@"
+        popd >/dev/null
+    else
+        go mkdir -p "$WDIR"
+        pushd "$WDIR" >/dev/null
+        go git init "$@"
+        popd >/dev/null
+    fi
     if [ x"$BARE" == x"" ]; then
-        go mkdir -p $NAME
-        pushd $NAME >/dev/null
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config core.logallrefupdates "true"
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME commit --allow-empty -m "Created."
+        pushd "$WDIR" >/dev/null
+        go git "--git-dir=$GDIR" "--work-tree=$WDIR" config core.logallrefupdates "true"
+        go git "--git-dir=$GDIR" "--work-tree=$WDIR" commit --allow-empty -m "Created."
         popd >/dev/null
     fi
 }
 
 
-function clone() {
-    HERE=$PWD
-    BARE=""
-    if [ x"$1" == x"bare" ]; then
-        shift
-        BARE="--bare"
-    fi
+CLONE_NAME=""
+CLONE_URL=""
+CLONE_EXTRA=""
+function clone_name() {
     if [ x"$1" == x"" ]; then
         usage
     fi
-    NAME=$(basename $1 .git)
-    FULLNAME=$1
+    CLONE_NAME=$(basename $1 .git)
+    CLONE_URL=$1
+    CLONE_EXTRA=""
     shift
     if [ x"$1" != x"" ]; then
-        NAME=$1
+        CLONE_NAME=$1
+        CLONE_EXTRA="1"
         shift
     fi
-    go git clone --bare $FULLNAME $NAME.git "$@"
+}
+
+function clone() {
+    HERE=$PWD
+    BARE=""
+    NAME=""
+    WDIR=""
+    GDIR=""
+    NORM=""
+    if [ x"$1" == x"bare" ]; then
+        shift
+        BARE="--bare"
+        clone_name "$1" "$2"
+        shift
+        if [ x"$CLONE_EXTRA" != x"" ]; then
+            shift
+        fi
+        GDIR=$HERE/$CLONE_NAME
+    elif [ x"$1" == x"split" ]; then
+        shift
+        clone_name "$1" "$2"
+        shift
+        if [ x"$CLONE_EXTRA" != x"" ]; then
+            shift
+        fi
+        WDIR2=$(readlink -f "$HERE/../work")
+        WDIR3=$(readlink -f "$HERE/../projects")
+        GDIR2=$(readlink -f "$HERE/../repos")
+        DONE=""
+        if [[ -d "$GDIR2" ]] && [[ -d "$WDIR2" ]]; then
+            if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR2" == "$HERE"* ]]; then
+                WDIR="$WDIR2/$CLONE_NAME"
+                GDIR="$GDIR2/$CLONE_NAME"
+                DONE="TRUE"
+            fi
+        elif [[ -d "$GDIR2" ]] && [[ -d "$WDIR3" ]]; then
+            if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR3" == "$HERE"* ]]; then
+                WDIR="$WDIR3/$CLONE_NAME"
+                GDIR="$GDIR2/$CLONE_NAME"
+                DONE="TRUE"
+            fi
+        fi
+        if [ x"$DONE" == x"" ]; then
+            WDIR="$HERE/$CLONE_NAME"
+            GDIR="$HERE/$CLONE_NAME.git"
+        fi
+    else
+        clone_name "$1" "$2"
+        shift
+        if [ x"$CLONE_EXTRA" != x"" ]; then
+            shift
+        fi
+        WDIR=$HERE/$CLONE_NAME
+        GDIR=$HERE/$CLONE_NAME/.git
+        NORM="TRUE"
+    fi
+    shift
+    if [ x"$NORM" == x"" ]; then
+        if [ x"$BARE" == x"" ]; then
+            go mkdir -p "$WDIR"
+        fi
+        go mkdir -p "$GDIR"
+        pushd "$GDIR" >/dev/null
+        go git clone --bare "$CLONE_URL" "." "$@"
+        popd >/dev/null
+    else
+        go mkdir -p "$WDIR"
+        pushd "$WDIR" >/dev/null
+        go git clone "$CLONE_URL" "." "$@"
+        popd >/dev/null
+    fi
     if [ x"$BARE" == x"" ]; then
-        go mkdir -p $NAME
-        pushd $NAME >/dev/null
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME checkout -f
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config core.logallrefupdates "true"
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config branch.master.remote "origin"
-        go git --git-dir=$HERE/$NAME.git --work-tree=$HERE/$NAME config branch.master.merge "refs/heads/master"
+        pushd "$WDIR" >/dev/null
+        if [ x"$NORM" == x"" ]; then
+            go git "--git-dir=$GDIR" "--work-tree=$WDIR" config core.logallrefupdates "true"
+            go git "--git-dir=$GDIR" "--work-tree=$WDIR" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+            go git "--git-dir=$GDIR" "--work-tree=$WDIR" config branch.master.remote "origin"
+            go git "--git-dir=$GDIR" "--work-tree=$WDIR" config branch.master.merge "refs/heads/master"
+        fi
+        go git "--git-dir=$GDIR" "--work-tree=$WDIR" checkout -f
         popd >/dev/null
     fi
 }
