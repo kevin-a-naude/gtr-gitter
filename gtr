@@ -1,17 +1,69 @@
 #!/bin/bash
 
-PWD=$(pwd)
+function basename()
+{
+   local name="${1##*/}"
+   echo "${name%$2}"
+}
+
+function dirname()
+{
+   local dir="${1%${1##*/}}"
+   if [ "${dir:=./}" != "/" ]; then
+       dir="${dir%?}"
+   fi
+   echo "$dir"
+}
+
+
+BNAME=""
+function basename_here()
+{
+   local name="${1##*/}"
+   BNAME="${name%$2}"
+}
+
+DNAME=""
+function dirname_here()
+{
+   local dir="${1%${1##*/}}"
+   if [ "${dir:=./}" != "/" ]; then
+       dir="${dir%?}"
+   fi
+   DNAME="$dir"
+}
+
+RELDIR=""
+function reldir() {
+    dirname_here "$1"
+    local NEW_DIR="$DNAME"
+    if [ x"$NEW_DIR" != x"" ]; then
+        RELDIR="$NEW_DIR/$2"
+    else
+        RELDIR=""
+    fi
+}
+function rel2dir() {
+    dirname_here "$1"
+    dirname_here "$DNAME"
+    local NEW_DIR="$DNAME"
+    if [ x"$NEW_DIR" != x"" ]; then
+        RELDIR="$NEW_DIR/$2"
+    else
+        RELDIR=""
+    fi
+}
 
 QUIET=""
 # QUIET="true"
 function params() {
     if [ x"$QUIET" == x"" ]; then
-        PARAMS=""
+        local PARAMS=""
         if [ x"$1" != x"" ]; then
             PARAM="$1"
             PARAM_E="${PARAM/ /}"
             if [ x"$1" == x"$PARAM_E" ]; then
-                PARAMS=$1
+                PARAMS="$1"
             else
                 PARAMS="\"$1\""
             fi
@@ -22,7 +74,7 @@ function params() {
                     PARAM_E="${PARAM/ /}"
                     PARAM_E="${PARAM_E//\"/}"
                     if [ x"$1" == x"$PARAM_E" ]; then
-                        PARAM_E=$1
+                        PARAM_E="$1"
                     else
                         PARAM_E="\"${PARAM//\"/\\\"}\""
                     fi
@@ -44,21 +96,41 @@ function go() {
 }
 
 
+TRY_RESULT=""
+function TryIt() {
+    if [[ ! -d "$1/.git" && ! -d "$1.git" && x"$2" == x""  && x"$3" != x"TRUE" ]]; then
+        TRY_RESULT="TRUE"
+    else
+        TRY_RESULT=""
+    fi
+}
+
+
 GDIR=""
 GTREE=""
 function getGIT() {
-    DIR="$PWD"
-    NEWDIR="$DIR"
-    NAME=$(basename $DIR .git)
-    ALTEXT=${DIR: -4:4}
-    ALTDIR=$(dirname $DIR)/$NAME
-    ALTEX=""
-    WDIR=$(readlink -f $DIR/../../work/$NAME)
-    PDIR=$(readlink -f $DIR/../../projects/$NAME)
-    RDIR=$(readlink -f $DIR/../../repos/$NAME.git)
-    RDIR2=$(readlink -f $DIR/../../repos/$NAME)
-    SPLITDIR=""
-    SPLITDIR2=""
+    local DIR="$PWD"
+    local NEWDIR="$DIR"
+
+    basename_here "$DIR" .git
+    local NAME="$BNAME"
+    local ALTEXT=${DIR: -4:4}
+
+    dirname_here "$DIR"
+    local ALTDIR="$DNAME/$NAME"
+    local ALTEX=""
+
+    rel2dir "$DIR" "work/$NAME"
+    local WDIR="$RELDIR"
+    rel2dir "$DIR" "projects/$NAME"
+    local PDIR="$RELDIR"
+    rel2dir "$DIR" "repos/$NAME.git"
+    local RDIR="$RELDIR"
+    rel2dir "$DIR" "repos/$NAME"
+    local RDIR2="$RELDIR"
+
+    local SPLITDIR=""
+    local SPLITDIR2=""
     if [[ -d "$RDIR" ]]; then
         SPLITDIR2="$RDIR"
     elif [[ -d "$RDIR2" ]]; then
@@ -75,23 +147,37 @@ function getGIT() {
     elif [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
         ALTEX="TRUE"
     fi
-    while [[ ! -d "$DIR/.git" && ! -d "$DIR.git" && x"$SPLITDIR" == x""  && x"$ALTEX" != x"TRUE" ]]
+
+    TryIt "$DIR" "$SPLITDIR" "$ALTEX"
+    # while [[ ! -d "$DIR/.git" && ! -d "$DIR.git" && x"$SPLITDIR" == x""  && x"$ALTEX" != x"TRUE" ]]
+    while [ x"$TRY_RESULT" != x"" ]
     do
-        NEWDIR=$(dirname "$DIR")
+        dirname_here "$DIR"
+        NEWDIR="$DNAME"
         if [[ x"$NEWDIR" == x"$DIR" || "$NEWDIR" == "/" ]]; then
             break
         fi
         DIR="$NEWDIR"
         ALTEXT=${DIR: -4:4}
-        ALTDIR="$(dirname $DIR)/$(basename $DIR .git)"
-        WDIR=$(readlink -f $DIR/../../work/$NAME)
-        PDIR=$(readlink -f $DIR/../../projects/$NAME)
-        RDIR=$(readlink -f $DIR/../../repos/$NAME.git)
-        RDIR2=$(readlink -f $DIR/../../repos/$NAME)
-        if [[ -d "$RDIR" ]]; then
-            SPLITDIR2="$RDIR"
-        elif [[ -d "$RDIR2" ]]; then
-            SPLITDIR2="$RDIR2"
+        dirname_here "$DIR"
+        basename_here "$DIR" .git
+        ALTDIR="$DNAME/$BNAME"
+
+        rel2dir "$DIR" "work/$BNAME"
+        WDIR="$RELDIR"
+        rel2dir "$DIR" "projects/$BNAME"
+        PDIR="$RELDIR"
+        rel2dir "$DIR" "repos/$BNAME.git"
+        RDIR="$RELDIR"
+        rel2dir "$DIR" "repos/$BNAME"
+        RDIR2="$RELDIR"
+
+        if [[ "$RDIR" != "//"* ]]; then
+            if [[ -d "$RDIR" ]]; then
+                SPLITDIR2="$RDIR"
+            elif [[ -d "$RDIR2" ]]; then
+                SPLITDIR2="$RDIR2"
+            fi
         fi
         if [[ x"$SPLITDIR2" != x"" ]]; then
             if [[ -d "$PDIR" ]]; then
@@ -104,6 +190,7 @@ function getGIT() {
         elif [[ x"$ALTDIR" != x"" && "$ALTEXT" == ".git" ]]; then
             ALTEX="TRUE"
         fi
+        TryIt "$DIR" "$SPLITDIR" "$ALTEX"
     done
     if [ -d "$DIR/.git" ]; then
         GDIR="--git-dir=$DIR/.git"
@@ -128,11 +215,10 @@ function getGIT() {
         GTREE=""
     fi
 }
-getGIT
 
 
 function qgogit() {
-    TREEDIR=""
+    local TREEDIR=""
     if [[ $GTREE == --work-tree=* ]]; then
         TREEDIR=${GTREE/--work-tree=/}
     fi
@@ -209,17 +295,18 @@ function getRemoteSlashBranch() {
         getRemoteBranch
     fi
     if [[ x"$REMOTE" != x"" ]] && [[ x"$REMOTE_BRANCH" != x"" ]]; then
-        REMOTE_SLASH_BRANCH=$REMOTE/$REMOTE_BRANCH
+        REMOTE_SLASH_BRANCH="$REMOTE/$REMOTE_BRANCH"
     fi
 }
 
 
-function usage() {
-    DISCOVERED="none"
+function gtr_usage() {
+    local DISCOVERED="none"
     if [[ x"$GDIR" != x"" ]] || [[ x"$GTREE" != x"" ]]; then
         DISCOVERED="$GDIR $GTREE"
     fi
-    PROG=$(basename $0)
+    # local PROG=$(basename $0)
+    local PROG="gtr"
     cat <<END
 gitter -- a git convenience wrapper written by Kevin A. Naudé
 git paths discovered: $DISCOVERED
@@ -245,29 +332,31 @@ Usage:
     $PROG git ...
     $PROG ...
 END
-    exit
 }
 
 
-function init() {
-    HERE=$PWD
-    BARE=""
-    NAME=""
-    WDIR=""
-    GDIR=""
-    NORM=""
+function gtr_init() {
+    local HERE="$PWD"
+    local BARE=""
+    local NAME=""
+    local WDIR=""
+    local GDIR=""
+    local NORM=""
     if [ x"$1" == x"bare" ]; then
         shift
         BARE="--bare"
-        NAME=$1
-        GDIR=$HERE/$NAME
+        NAME="$1"
+        GDIR="$HERE/$NAME"
     elif [ x"$1" == x"split" ]; then
         shift
-        NAME=$1
-        WDIR2=$(readlink -f "$HERE/../work")
-        WDIR3=$(readlink -f "$HERE/../projects")
-        GDIR2=$(readlink -f "$HERE/../repos")
-        DONE=""
+        NAME="$1"
+        reldir "$HERE" "work"
+        WDIR2="$RELDIR"
+        reldir "$HERE" "projects"
+        WDIR3="$RELDIR"
+        reldir "$HERE" "repos"
+        GDIR2="$RELDIR"
+        local DONE=""
         if [[ -d "$GDIR2" ]] && [[ -d "$WDIR2" ]]; then
             if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR2" == "$HERE"* ]]; then
                 WDIR="$WDIR2/$NAME"
@@ -286,9 +375,9 @@ function init() {
             GDIR="$HERE/$NAME.git"
         fi
     else
-        NAME=$1
-        WDIR=$HERE/$NAME
-        GDIR=$HERE/$NAME/.git
+        NAME="$1"
+        WDIR="$HERE/$NAME"
+        GDIR="$HERE/$NAME/.git"
         NORM="TRUE"
     fi
     shift
@@ -320,26 +409,28 @@ CLONE_URL=""
 CLONE_EXTRA=""
 function clone_name() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
-    CLONE_NAME=$(basename $1 .git)
-    CLONE_URL=$1
+    basename_here "$1" .git
+    CLONE_NAME="$BNAME"
+    CLONE_URL="$1"
     CLONE_EXTRA=""
     shift
     if [ x"$1" != x"" ]; then
-        CLONE_NAME=$1
+        CLONE_NAME="$1"
         CLONE_EXTRA="1"
         shift
     fi
 }
 
-function clone() {
-    HERE=$PWD
-    BARE=""
-    NAME=""
-    WDIR=""
-    GDIR=""
-    NORM=""
+function gtr_clone() {
+    local HERE="$PWD"
+    local BARE=""
+    local NAME=""
+    local WDIR=""
+    local GDIR=""
+    local NORM=""
     if [ x"$1" == x"bare" ]; then
         shift
         BARE="--bare"
@@ -348,7 +439,7 @@ function clone() {
         if [ x"$CLONE_EXTRA" != x"" ]; then
             shift
         fi
-        GDIR=$HERE/$CLONE_NAME
+        GDIR="$HERE/$CLONE_NAME"
     elif [ x"$1" == x"split" ]; then
         shift
         clone_name "$1" "$2"
@@ -356,10 +447,13 @@ function clone() {
         if [ x"$CLONE_EXTRA" != x"" ]; then
             shift
         fi
-        WDIR2=$(readlink -f "$HERE/../work")
-        WDIR3=$(readlink -f "$HERE/../projects")
-        GDIR2=$(readlink -f "$HERE/../repos")
-        DONE=""
+        reldir "$HERE" "work"
+        WDIR2="$RELDIR"
+        reldir "$HERE" "projects"
+        WDIR3="$RELDIR"
+        reldir "$HERE" "repos"
+        GDIR2="$RELDIR"
+        local DONE=""
         if [[ -d "$GDIR2" ]] && [[ -d "$WDIR2" ]]; then
             if [[ "$GDIR2" == "$HERE"* ]] || [[ "$WDIR2" == "$HERE"* ]]; then
                 WDIR="$WDIR2/$CLONE_NAME"
@@ -383,8 +477,8 @@ function clone() {
         if [ x"$CLONE_EXTRA" != x"" ]; then
             shift
         fi
-        WDIR=$HERE/$CLONE_NAME
-        GDIR=$HERE/$CLONE_NAME/.git
+        WDIR="$HERE/$CLONE_NAME"
+        GDIR="$HERE/$CLONE_NAME/.git"
         NORM="TRUE"
     fi
     shift
@@ -416,15 +510,18 @@ function clone() {
 }
 
 
-function setup() {
+function gtr_setup() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     if [ x"$2" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     if [ x"$3" != x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     gogit config --global user.name "$1"
     gogit config --global user.email "$2"
@@ -432,7 +529,9 @@ function setup() {
 }
 
 
-function log() {
+function gtr_log() {
+    # The two graph formats are attributed to Slipp D. Thompson's suggestion on Stack Overflow.
+    # See http://stackoverflow.com/a/9074343/588948
     if [ x"$1" == x"" ]; then
         gogitDT log
     elif [[ x"$1" == x"g1" ]] || [[ x"$1" == x"g" ]]; then
@@ -445,13 +544,14 @@ function log() {
 }
 
 
-function which() {
+function gtr_which() {
     if [ x"$1" == x"hash" ]; then
         getBranch
         qgogitDT merge-base $BRANCH $BRANCH
     elif [ x"$1" == x"branch" ]; then
-        getBranch
-        echo "$BRANCH"
+        # getBranch
+        # echo "$BRANCH"
+        qgogitDT branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/'
     elif [ x"$1" == x"tag" ]; then
         qgogitDT describe --abbrev=0
     elif [ x"$1" == x"remote" ]; then
@@ -461,17 +561,18 @@ function which() {
         getRemoteSlashBranch
         echo "$REMOTE_SLASH_BRANCH"
     else
-        usage
+        gtr_usage
+        return -1
     fi
 }
 
 
-function get() {
+function gtr_get() {
     gogitDT checkout "$@"
 }
 
 
-function commit() {
+function gtr_commit() {
     if [ x"$1" == x"!" ]; then
         gogitDT commit --allow-empty-message -m ""
     elif [ x"$1" == x"" ]; then
@@ -482,22 +583,23 @@ function commit() {
 }
 
 
-function pull() {
+function gtr_pull() {
     getRemoteSlashBranch
-    TARGET1=$REMOTE
-    TARGET2=$REMOTE_SLASH_BRANCH
+    local TARGET1="$REMOTE"
+    local TARGET2="$REMOTE_SLASH_BRANCH"
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     if [[ x"$1" != x"over" ]] && [[ x"$1" != x"under" ]]; then
         if [ x"$1" != x"$REMOTE" ]; then
             if [[ "$1" == */* ]]; then
-                TARGET=$1
+                TARGET="$1"
                 TARGET2=${TARGET//[^\/]*\//}
                 TARGET=${TARGET//\/[^\/]*/}
             else
-                TARGET1=$1
-                TRAGET2=$1/master
+                TARGET1="$1"
+                TARGET2="$1/master"
             fi
         fi
         shift
@@ -505,43 +607,46 @@ function pull() {
     if [[ x"$1" == x"over" ]] || [[ x"$1" == x"under" ]]; then
         gogitDT tag -f gtr-check-point
         if [ x"$1" == x"over" ]; then
-            gogitDT fetch $TARGET1 && gogitDT merge $TARGET2
+            gogitDT fetch "$TARGET1" && gogitDT merge "$TARGET2"
         elif [ x"$1" == x"under" ]; then
-            gogitDT fetch $TARGET1 && gogitDT rebase $TARGET2
+            gogitDT fetch "$TARGET1" && gogitDT rebase "$TARGET2"
         fi
     else
-        usage
+        gtr_usage
+        return -1
     fi
 }
 
 
-function merge() {
+function gtr_merge() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     gogitDT tag -f gtr-check-point
     if [ x"$2" == x"squash" ]; then
-        gogitDT merge --squash --no-commit $1 && gogitDT status
+        gogitDT merge --squash --no-commit "$1" && gogitDT status
     else
         gogitDT merge --no-commit $1 && gogitDT status
     fi
 }
 
 
-function squash() {
+function gtr_squash() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     gogitDT tag -f gtr-check-point
-    BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
-    HASH=$(qgogitDT merge-base $BRANCH $BRANCH)
-    OTHER=$(qgogitDT merge-base $1 $BRANCH)
+    local BRANCH=$(git $GDIR $GTREE branch --no-color 2>/dev/null | sed -e '/^[^*]/d' -e 's/*\s*\(.*\)/\1/')
+    local HASH=$(qgogitDT merge-base "$BRANCH" "$BRANCH")
+    local OTHER=$(qgogitDT merge-base "$1" "$BRANCH")
     shift
-    gogitDT reset --hard $OTHER && gogitDT merge --squash $HASH && commit && check
+    gogitDT reset --hard "$OTHER" && gogitDT merge --squash "$HASH" && gtr_commit && gtr_check
 }
 
 
-function add() {
+function gtr_add() {
     if [ x"$1" == x""  ]; then
         gogitDT add . && gogitDT status
     else
@@ -550,16 +655,16 @@ function add() {
 }
 
 
-function stage() {
+function gtr_stage() {
    gogitDT add -u && gogitDT status
 }
 
 
 GIT_CHECK_OK=""
-function check () {
+function gtr_check () {
     qgogitDT update-index -q --ignore-submodules --refresh
     GIT_CHECK_OK=""
-    RESULT="yes"
+    local RESULT="yes"
 
     if ! qgogitDT diff-files --quiet --ignore-submodules --
     then
@@ -572,17 +677,18 @@ function check () {
     else
         echo "The work tree appears to be in a committed state."
     fi
-    GIT_CHECK_OK=$RESULT
+    GIT_CHECK_OK="$RESULT"
 }
 
 
-function newBranch() {
+function gtr_newBranch() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return -1
     fi
     qgogitDT update-index -q --ignore-submodules --refresh
     GIT_CHECK_OK=""
-    RESULT="yes"
+    local RESULT="yes"
 
     if ! qgogitDT diff-files --quiet --ignore-submodules --
     then
@@ -593,16 +699,17 @@ function newBranch() {
     fi
     GIT_CHECK_OK=$RESULT
     if [ x"$GIT_CHECK_OK" != x"" ]; then
-        gogitDT checkout -b $1
+        gogitDT checkout -b "$1"
     else
-        gogitDT stash save && gogitDT stash branch $1
+        gogitDT stash save && gogitDT stash branch "$1"
     fi
 }
 
 
 function dispatch() {
     if [ x"$1" == x"" ]; then
-        usage
+        gtr_usage
+        return 0
     fi
 
     while [[ x"$1" == x"-q" ]] || [[ x"$1" == x"-v" ]]; do
@@ -620,69 +727,69 @@ function dispatch() {
     case "$1" in
     setup)
         shift
-        setup "$@"
+        gtr_setup "$@"
         ;;
     init)
         shift
-        init "$@"
+        gtr_init "$@"
         ;;
     clone)
         shift
-        clone "$@"
+        gtr_clone "$@"
         ;;
     check)
         shift
-        check "$@"
+        gtr_check "$@"
         ;;
     get)
         shift
-        get "$@"
+        gtr_get "$@"
         ;;
     pull)
         shift
-        pull "$@"
+        gtr_pull "$@"
         ;;
     merge)
         shift
-        merge "$@"
+        gtr_merge "$@"
         ;;
     squash)
         shift
-        squash "$@"
+        gtr_squash "$@"
         ;;
     commit)
         shift
-        commit "$@"
+        gtr_commit "$@"
         ;;
     new)
         shift
-        newBranch "$@"
+        gtr_newBranch "$@"
         ;;
     new-branch)
         shift
-        newBranch "$@"
+        gtr_newBranch "$@"
         ;;
     add)
         shift
-        add "$@"
+        gtr_add "$@"
         ;;
     stage)
         shift
-        stage "$@"
+        gtr_stage "$@"
         ;;
     which)
         shift
-        which "$@"
+        gtr_which "$@"
         ;;
     log)
         shift
-        log "$@"
+        gtr_log "$@"
         ;;
     archive)
-        qgogitDT "$@"
+        gtr_archive "$@"
         ;;
     help)
-        usage
+        gtr_usage
         ;;
     git)
         shift
@@ -694,8 +801,11 @@ function dispatch() {
     esac
 }
 
-# usage
-# gogitDT "$@"
-# check
+function gtr() {
+    getGIT
+    dispatch "$@"
+}
 
-dispatch "$@"
+if [ x"$GTR_LOADING" == x"" ]; then
+    gtr "$@"
+fi
